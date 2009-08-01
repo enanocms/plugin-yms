@@ -33,6 +33,7 @@ require(ENANO_ROOT . '/plugins/yms/transcode.php');
 require(ENANO_ROOT . '/plugins/yms/backend.php');
 require(ENANO_ROOT . '/plugins/yms/validate.php');
 require(ENANO_ROOT . '/plugins/yms/validate-functions.php');
+require(ENANO_ROOT . '/plugins/yms/admincp.php');
 
 /**!language**
 
@@ -162,7 +163,31 @@ necessary; it is only included as a tool for development.
         btn_delete_key: 'Delete key',
         btn_show_aes: 'Show AES secret',
         btn_show_converter: 'Binary encoding converter',
-        btn_show_client_info: 'View client info'
+        btn_show_client_info: 'View client info',
+        
+        // ADMIN
+        acp_title: 'Yubikey Management Server',
+        acp_heading_main: 'YMS configuration',
+        acp_th_main: 'Yubikey Management Server options',
+        acp_field_require_reauth_title: 'Require re-authentication to access YMS interface:',
+        acp_field_require_reauth_hint: 'This can be redundant and unnecessary if the sole purpose of your Enano installation is for YMS purposes.',
+        acp_field_require_reauth: 'YMS pages require re-authentication',
+        acp_field_claimauth_enable_title: 'Use external authentication when claiming Yubikeys:',
+        acp_field_claimauth_enable_hint: 'This allows you to require an additional value - for example, the receipt number from the user\'s Yubikey order - when Yubikeys are claimed.',
+        acp_field_claimauth_enable: 'Require additional field to claim a Yubikey',
+        acp_field_claimauth_url_title: 'URL to claim authentication server:',
+        acp_field_claimauth_url_hint: 'The following variables will be applied:
+                                       <ul>
+                                         <li>%c = The value the user entered in your custom field</li>
+                                         <li>%o = The Yubikey OTP from the form</li>
+                                         <li>%h = The HMAC signature of the request</li>
+                                       </ul>
+                                       This authentication uses the same protocol as other Yubikey authentication servers. See the <a href="http://enanocms.org/plugin/yms" onclick="window.opeh(this.href); return false;">YMS plugin page on enanocms.org</a> for information on how to write an authentication server.<br />
+                                       <b>Example URL:</b> <tt>http://10.4.27.3/wsapi/validateclaim?id=1&amp;tid=%c&amp;otp=%o&amp;h=%h</tt>',
+        acp_field_claimauth_key_title: 'API key for authentication server:',
+        acp_field_claimauth_key_hint: 'If provided, YMS will sign the requests it makes to your authentication server. Leave blank to disable signature support.',
+        
+        acp_msg_saved: 'Your changes to the YMS configuration have been saved.',
       }
     }
   }

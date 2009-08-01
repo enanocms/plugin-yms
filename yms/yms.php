@@ -63,7 +63,7 @@ function page_Special_YMS()
   else if ( isset($_POST['claim_otp']) )
   {
     // do we need to validate a custom field?
-    if ( ($url = getConfig('yms_claim_auth_url')) && getConfig('yms_claim_auth_field') )
+    if ( ($url = getConfig('yms_claim_auth_url')) && getConfig('yms_claim_auth_field') && getConfig('yms_claim_auth_enable', 0) == 1 )
     {
       if ( ($result = yms_validate_custom_field($_POST['custom_field'], $_POST['claim_otp'], $url)) !== true )
         yms_send_response('n/a', $result);
