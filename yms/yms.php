@@ -174,7 +174,7 @@ function page_Special_YMS()
       <?php echo $lang->get('yms_btn_show_converter'); ?>
     </a>
     
-    <a href="<?php echo makeUrlNS('Special', 'YMS/Converter'); ?>" onclick="yms_showpage('ShowClientInfo'); return false;" class="abutton abutton_blue icon"
+    <a href="<?php echo makeUrlNS('Special', 'YMS/ShowClientInfo'); ?>" onclick="yms_showpage('ShowClientInfo'); return false;" class="abutton abutton_blue icon"
        style="background-image: url(<?php echo scriptPath; ?>/plugins/yms/icons/show_client_info.png);">
       <?php echo $lang->get('yms_btn_show_client_info'); ?>
     </a>
@@ -196,6 +196,11 @@ function page_Special_YMS_AddKey()
 {
   global $output;
   global $lang;
+  
+  $output->add_after_header('<div class="breadcrumbs">
+      <a href="' . makeUrlNS('Special', 'YMS') . '">' . $lang->get('yms_specialpage_yms') . '</a> &raquo;
+      ' . $lang->get('yms_btn_add_key') . '
+    </div>');
   
   $output->header();
   ?>
@@ -284,6 +289,11 @@ function page_Special_YMS_AddPreregisteredKey()
 {
   global $db, $session, $paths, $template, $plugins; // Common objects
   global $lang, $output;
+  
+  $output->add_after_header('<div class="breadcrumbs">
+      <a href="' . makeUrlNS('Special', 'YMS') . '">' . $lang->get('yms_specialpage_yms') . '</a> &raquo;
+      ' . $lang->get('yms_btn_add_key_preregistered') . '
+    </div>');
   
   $output->header();
   ?>
@@ -374,6 +384,11 @@ function page_Special_YMS_ShowAESKey()
   global $db, $session, $paths, $template, $plugins; // Common objects
   global $lang, $output;
   
+  $output->add_after_header('<div class="breadcrumbs">
+      <a href="' . makeUrlNS('Special', 'YMS') . '">' . $lang->get('yms_specialpage_yms') . '</a> &raquo;
+      ' . $lang->get('yms_btn_show_aes') . '
+    </div>');
+  
   $id = intval($paths->getParam(1));
   
   // verify ownership, retrieve key
@@ -444,6 +459,11 @@ function page_Special_YMS_ShowClientInfo()
   global $db, $session, $paths, $template, $plugins; // Common objects
   global $lang, $output;
   
+  $output->add_after_header('<div class="breadcrumbs">
+      <a href="' . makeUrlNS('Special', 'YMS') . '">' . $lang->get('yms_specialpage_yms') . '</a> &raquo;
+      ' . $lang->get('yms_btn_show_client_info') . '
+    </div>');
+  
   $q = $db->sql_query('SELECT apikey FROM ' . table_prefix . "yms_clients WHERE id = {$session->user_id};");
   if ( !$q )
     $db->_die();
@@ -497,6 +517,11 @@ function page_Special_YMS_Converter()
 {
   global $db, $session, $paths, $template, $plugins; // Common objects
   global $lang, $output;
+  
+  $output->add_after_header('<div class="breadcrumbs">
+      <a href="' . makeUrlNS('Special', 'YMS') . '">' . $lang->get('yms_specialpage_yms') . '</a> &raquo;
+      ' . $lang->get('yms_btn_show_converter') . '
+    </div>');
   
   $output->header();
   
