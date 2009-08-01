@@ -1,0 +1,56 @@
+p.yms-copypara {
+  line-height: 220%;
+  margin-left: 2.3em;
+}
+
+span.yms-copyfield {
+  padding: 3px 7px;
+  border: 1px dashed rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+div.yms-buttons {
+  padding: 10px 0;
+  text-align: right;
+}
+
+div#yms-float-wrapper {
+  position: absolute;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  top: 0;
+  margin-top: 75px;
+}
+
+div#yms-float-body {
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #ffffff;
+  text-align: center;
+  /* width: 708px; */
+  width: 130px;
+  height: 130px;
+  
+  clip: rect(0px, auto, auto, 0px);
+  overflow: auto;
+}
+
+div.yms-float-closer {
+  margin-top: 20px;
+  text-align: center;
+}
+
+span.yms-enabled {
+  color: white;
+  padding: 2px 4px;
+  background-color: #00aa00;
+  cursor: pointer;
+}
+
+span.yms-disabled {
+  color: white;
+  padding: 2px 4px;
+  background-color: #aa0000;
+  cursor: pointer;
+}
