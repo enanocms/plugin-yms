@@ -38,7 +38,11 @@ function page_Special_YMS()
       if ( function_exists("page_Special_YMS_{$subpage}") )
       {
         // call the subpage
-        return call_user_func("page_Special_YMS_{$subpage}");
+        $return = call_user_func("page_Special_YMS_{$subpage}");
+        if ( !$return )
+          return false;
+        
+        // return true = continue exec
       }
     }
   }
@@ -78,6 +82,26 @@ function page_Special_YMS()
     $result = yms_chown_yubikey($_POST['claim_otp'], $client_id, $enabled, $any_client, $notes);
     yms_send_response('yms_msg_addkey_success', $result);
   }
+  else if ( $paths->getParam(0) == 'DeleteKey' && $paths->getParam(2) == 'Confirm' )
+  {
+    csrf_request_confirm();
+    $id = intval($paths->getParam(1));
+    $result = yms_delete_key($id);
+    yms_send_response('yms_msg_delete_success', $result);
+  }
+  
+  if ( isset($_GET['toggle']) && isset($_GET['state']) )
+  {
+    $id = intval($_GET['toggle']);
+    if ( $_GET['state'] === 'active' )
+      $expr = 'flags | ' . YMS_ENABLED;
+    else
+      $expr = 'flags & ~' . YMS_ENABLED;
+      
+    $q = $db->sql_query('UPDATE ' . table_prefix . "yms_yubikeys SET flags = $expr WHERE id = $id AND client_id = {$session->user_id};");
+    if ( !$q )
+      $db->die_json();
+  }
   
   // Preload JS libraries we need for Yubikey
   $template->preload_js(array('jquery', 'jquery-ui', 'l10n', 'flyin', 'messagebox', 'fadefilter'));
@@ -108,7 +132,7 @@ function page_Special_YMS()
   <?php
   
   // Pull all Yubikeys
-  $q = $db->sql_query('SELECT id, public_id, session_count, create_time, access_time, flags, notes FROM ' . table_prefix . "yms_yubikeys WHERE client_id = {$session->user_id};");
+  $q = $db->sql_query('SELECT id, public_id, session_count, create_time, access_time, flags, notes FROM ' . table_prefix . "yms_yubikeys WHERE client_id = {$session->user_id} ORDER BY id ASC;");
   if ( !$q )
     $db->_die();
   
@@ -628,6 +652,47 @@ function page_Special_YMS_Converter()
   $output->footer();
 }
 
+function page_Special_YMS_DeleteKey()
+{
+  global $db, $session, $paths, $template, $plugins; // Common objects
+  global $lang, $output;
+  
+  $output->add_after_header('<div class="breadcrumbs">
+      <a href="' . makeUrlNS('Special', 'YMS') . '">' . $lang->get('yms_specialpage_yms') . '</a> &raquo;
+      ' . $lang->get('yms_btn_delete_key') . '
+    </div>');
+  
+  $id = intval($paths->getParam(1));
+  if ( !$id )
+    die();
+  
+  if ( $paths->getParam(2) == 'Confirm' )
+  {
+    // go back, Jack!
+    return true;
+  }
+  
+  $delete_url = makeUrlNS('Special', "YMS/DeleteKey/$id/Confirm", "cstok={$session->csrf_token}", true);
+  
+  $output->header();
+  
+  ?>
+  <form action="<?php echo $delete_url; ?>" method="post">
+  <div style="text-align: center;">
+    <h3><?php echo $lang->get('yms_msg_delete_confirm'); ?></h3>
+    <input type="hidden" name="placeholder" value="placeholder" />
+    <p>
+      <a href="<?php echo $delete_url; ?>" onclick="return yms_ajax_submit(this);" class="abutton abutton_red icon" style="background-image: url(<?php echo scriptPath; ?>/plugins/yms/icons/key_delete.png);">
+        <?php echo $lang->get('yms_btn_delete_key'); ?>
+      </a>
+    </p>
+  </div>
+  </form>
+  <?php
+  
+  $output->footer();
+}
+
 function page_Special_YMS_AjaxToggleState()
 {
   global $db, $session, $paths, $template, $plugins; // Common objects
@@ -824,8 +889,8 @@ function yms_state_indicator($flags, $id)
 {
   global $lang;
   return $flags & YMS_ENABLED ?
-    '<span onclick="yms_toggle_state(this, ' . $id . ');" class="yms-enabled">' . $lang->get('yms_state_active') . '</span>' :
-    '<span onclick="yms_toggle_state(this, ' . $id . ');" class="yms-disabled">' . $lang->get('yms_state_inactive') . '</span>';
+    '<a href="' . makeUrlNS('Special', 'YMS', "toggle=$id&state=inactive", true) . '" onclick="yms_toggle_state(this, ' . $id . '); return false;" class="yms-enabled">' . $lang->get('yms_state_active') . '</a>' :
+    '<a href="' . makeUrlNS('Special', 'YMS', "toggle=$id&state=active",   true) . '" onclick="yms_toggle_state(this, ' . $id . '); return false;" class="yms-disabled">' . $lang->get('yms_state_inactive') . '</a>';
 }
 
 function yms_notes_cell($notes, $id)
@@ -862,6 +927,9 @@ function yms_show_actions($row)
   ?>
     <a href="<?php echo makeUrlNS('Special', "YMS/ShowAESKey/{$row['id']}"); ?>" title="<?php echo $lang->get('yms_btn_show_aes'); ?>" onclick="yms_showpage('ShowAESKey/<?php echo $row['id']; ?>'); return false;">
       <img alt="<?php echo $lang->get('yms_btn_show_aes'); ?>" src="<?php echo scriptPath; ?>/plugins/yms/icons/key_go.png" />
+    </a>
+    <a href="<?php echo makeUrlNS('Special', "YMS/DeleteKey/{$row['id']}"); ?>" title="<?php echo $lang->get('yms_btn_delete_key'); ?>" onclick="yms_showpage('DeleteKey/<?php echo $row['id']; ?>'); return false;">
+      <img alt="<?php echo $lang->get('yms_btn_delete_key'); ?>" src="<?php echo scriptPath; ?>/plugins/yms/icons/key_delete.png" />
     </a>
   <?php
 }

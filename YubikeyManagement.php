@@ -139,6 +139,11 @@ necessary; it is only included as a tool for development.
         lbl_client_id: 'Client ID:',
         th_api_key: 'API key',
         
+        // Deletion interface
+        msg_delete_confirm: 'Are you sure you want to delete this Yubikey?',
+        err_delete_not_found: 'That Yubikey was not found, or it is not yours to delete.',
+        msg_delete_success: 'The selected Yubikey has been deleted successfully.',
+        
         // Binary format converter
         th_converted_value: 'Converted value',
         conv_err_invalid_string: 'The string was invalid or you entered did not match the format you selected.',
@@ -154,6 +159,7 @@ necessary; it is only included as a tool for development.
         // Key list
         btn_note_view: 'View or edit note',
         btn_note_create: 'No note; click to create',
+        btn_delete_key: 'Delete key',
         btn_show_aes: 'Show AES secret',
         btn_show_converter: 'Binary encoding converter',
         btn_show_client_info: 'View client info'

@@ -109,6 +109,31 @@ function yms_chown_yubikey($otp, $client_id = false, $enabled = true, $any_clien
   return true;
 }
 
+function yms_delete_key($id, $client_id = false)
+{
+  global $db, $session, $paths, $template, $plugins; // Common objects
+  
+  if ( $client_id === false )
+    $client_id = $session->user_id;
+  
+  $q = $db->sql_query('SELECT 1 FROM ' . table_prefix . "yms_yubikeys WHERE id = $id AND client_id = $client_id;");
+  if ( !$q )
+    $db->_die();
+  
+  if ( $db->numrows() < 1 )
+  {
+    $db->free_result();
+    return 'yms_err_delete_not_found';
+  }
+  $db->free_result();
+  
+  $q = $db->sql_query('DELETE FROM ' . table_prefix . "yms_yubikeys WHERE id = $id AND client_id = $client_id;");
+  if ( !$q )
+    $db->_die();
+  
+  return true;
+}
+
 function yms_validate_custom_field($value, $otp, $url)
 {
   require_once(ENANO_ROOT . '/includes/http.php');

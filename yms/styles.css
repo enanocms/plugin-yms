@@ -41,16 +41,22 @@ div.yms-float-closer {
   text-align: center;
 }
 
-span.yms-enabled {
+a.yms-enabled {
   color: white;
   padding: 2px 4px;
   background-color: #00aa00;
   cursor: pointer;
+  text-decoration: none;
 }
 
-span.yms-disabled {
+a.yms-disabled {
   color: white;
   padding: 2px 4px;
   background-color: #aa0000;
   cursor: pointer;
+  text-decoration: none;
+}
+
+a.yms-enabled:hover, a.yms-disabled:hover, a.yms-enabled:visited, a.yms-disabled:visited {
+  color: white !important;
 }

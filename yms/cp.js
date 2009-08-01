@@ -43,12 +43,13 @@ function yms_showpage(page)
     });
 }
 
-function yms_ajax_submit()
+function yms_ajax_submit(me)
 {
-  var whitey = whiteOutElement(this);
+  var form = this.tagName == 'FORM' ? this : findParentForm(me);
+  var whitey = whiteOutElement(form);
   
   var qs = '';
-  $('input, select, textarea', this).each(function(i, e)
+  $('input, select, textarea', form).each(function(i, e)
     {
       var name = $(e).attr('name');
       var val = $(e).val();
@@ -69,11 +70,11 @@ function yms_ajax_submit()
         qs += '&' + name + '=' + ajaxEscape(val);
     });
   qs = qs.replace(/^&/, '');
-  var submit_uri = $(this).attr('action');
+  var submit_uri = $(form).attr('action');
   var separator = (/\?/).test(submit_uri) ? '&' : '?';
   submit_uri += separator + 'ajax&noheaders';
   
-  var to_self = $(this).hasClass('submit_to_self');
+  var to_self = $(form).hasClass('submit_to_self');
   ajaxPost(submit_uri, qs, function(ajax)
     {
       if ( ajax.readyState == 4 && ajax.status == 200 )
