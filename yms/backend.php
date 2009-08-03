@@ -5,7 +5,7 @@ function yms_add_yubikey($key, $otp, $client_id = false, $enabled = true, $any_c
   global $db, $session, $paths, $template, $plugins; // Common objects
   
   if ( $client_id === false )
-    $client_id = $session->user_id;
+    $client_id = $GLOBALS['yms_client_id'];
   
   $key = yms_tobinary($key);
   $otp = yms_tobinary($otp);
@@ -66,7 +66,7 @@ function yms_chown_yubikey($otp, $client_id = false, $enabled = true, $any_clien
   global $db, $session, $paths, $template, $plugins; // Common objects
   
   if ( $client_id === false )
-    $client_id = $session->user_id;
+    $client_id = $GLOBALS['yms_client_id'];
   
   $otp = yms_tobinary($otp);
   
@@ -114,7 +114,7 @@ function yms_delete_key($id, $client_id = false)
   global $db, $session, $paths, $template, $plugins; // Common objects
   
   if ( $client_id === false )
-    $client_id = $session->user_id;
+    $client_id = $GLOBALS['yms_client_id'];
   
   $q = $db->sql_query('SELECT 1 FROM ' . table_prefix . "yms_yubikeys WHERE id = $id AND client_id = $client_id;");
   if ( !$q )
@@ -173,6 +173,31 @@ function yms_validate_custom_field($value, $otp, $url)
   }
   
   // authentication is ok
+  return true;
+}
+
+function yms_update_counters($id, $scount, $tcount, $client_id = false, $any_client = null)
+{
+  global $db, $session, $paths, $template, $plugins; // Common objects
+  
+  if ( !$client_id )
+    $client_id = intval($GLOBALS['yms_client_id']);
+  
+  foreach ( array($id, $scount, $tcount, $client_id) as $var )
+    if ( (!is_int($var) && !is_string($var)) || (is_string($var) && !ctype_digit($var)) )
+      return "yms_err_expected_int";
+    
+  $any_client_sql = '';
+  if ( is_bool($any_client) )
+  {
+    $operand = $any_client ? "|" : "& ~";
+    $any_client_sql = ", flags = flags " . $operand . YMS_ANY_CLIENT;
+  }
+    
+  $q = $db->sql_query('UPDATE ' . table_prefix . "yms_yubikeys SET session_count = {$scount}, token_count = {$tcount}{$any_client_sql} WHERE id = $id AND client_id = $client_id");
+  if ( !$q )
+    $db->_die();
+  
   return true;
 }
 
@@ -291,10 +316,10 @@ function yms_validate_otp($otp, $id)
     {
       return 'NO_SUCH_KEY';
     }
-    if ( !($flags & YMS_ENABLED) )
-    {
-      return 'NO_SUCH_KEY';
-    }
+  }
+  if ( !($flags & YMS_ENABLED) )
+  {
+    return 'NO_SUCH_KEY';
   }
   
   // decode the OTP

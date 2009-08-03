@@ -21,6 +21,7 @@ function page_Admin_YMS()
   if ( isset($_POST['submit']) )
   {
     setConfig('yms_require_reauth', isset($_POST['require_reauth']) ? '1' : '0');
+    setConfig('yms_claim_enable', isset($_POST['claim_enable']) ? '1' : '0');
     setConfig('yms_claim_auth_enable', isset($_POST['claimauth_enable']) ? '1' : '0');
     setConfig('yms_claim_auth_field', $_POST['claimauth_field']);
     setConfig('yms_claim_auth_url', $_POST['claimauth_url']);
@@ -49,6 +50,19 @@ function page_Admin_YMS()
         <label>
           <input type="checkbox" name="require_reauth" <?php if ( getConfig('yms_require_reauth', 1) == 1 ) echo 'checked="checked" '; ?>/>
           <?php echo $lang->get('yms_acp_field_require_reauth'); ?>
+        </label>
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="row2" style="width: 50%;">
+        <?php echo $lang->get('yms_acp_field_claim_enable_title'); ?><br />
+        <small><?php echo $lang->get('yms_acp_field_claim_enable_hint'); ?></small>
+      </td>
+      <td class="row1" style="width: 50%;">
+        <label>
+          <input type="checkbox" name="claim_enable" <?php if ( getConfig('yms_claim_enable', 0) == 1 ) echo 'checked="checked" '; ?>/>
+          <?php echo $lang->get('yms_acp_field_claim_enable'); ?>
         </label>
       </td>
     </tr>

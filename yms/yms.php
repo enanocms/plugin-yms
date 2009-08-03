@@ -5,6 +5,9 @@ function page_Special_YMS()
   global $db, $session, $paths, $template, $plugins; // Common objects
   global $lang;
   global $output;
+  global $yms_client_id;
+  
+  $yms_client_id = $session->user_id;
   
   // Require re-auth?
   if ( $session->auth_level < USER_LEVEL_CHPREF && getConfig('yms_require_reauth', 1) == 1 )
@@ -18,14 +21,45 @@ function page_Special_YMS()
     die_friendly($lang->get('yms_err_yubikey_plugin_missing_title'), '<p>' . $lang->get('yms_err_yubikey_plugin_missing_body') . '</p>');
   }
   
+  // Client switch allowed?
+  if ( $session->user_level >= USER_LEVEL_ADMIN && getConfig('yms_claim_enable', 0) == 1 )
+  {
+    $on_home = empty($_POST) && !$paths->getParam(0);
+    
+    // yes.
+    $configkey = "yms_zeroeditsess_{$session->user_id}";
+    if ( getConfig($configkey, 0) == 1 && !isset($_GET['client_switch']) )
+    {
+      // set to zero
+      $yms_client_id = 0;
+    }
+    else if ( !getConfig($configkey) && isset($_GET['client_switch']) )
+    {
+      // set to zero + update config
+      $yms_client_id = 0;
+      setConfig($configkey, 1);
+    }
+    else if ( getConfig($configkey) && isset($_GET['client_switch']) )
+    {
+      // turning off
+      setConfig($configkey, false);
+    }
+    
+    // display a notice
+    if ( $yms_client_id == 0 && $on_home )
+    {
+      $output->add_after_header('<div class="info-box">' . $lang->get('yms_msg_editing_zero') . '</div>');
+    }
+  }
+  
   // Does the client exist?
-  $q = $db->sql_query('SELECT 1 FROM ' . table_prefix . "yms_clients WHERE id = {$session->user_id};");
+  $q = $db->sql_query('SELECT 1 FROM ' . table_prefix . "yms_clients WHERE id = {$yms_client_id};");
   if ( !$q )
     $db->_die();
   
   $client_exists = $db->numrows();
   $db->free_result();
-  if ( !$client_exists )
+  if ( !$client_exists && $yms_client_id > 0 )
   {
     redirect(makeUrlNS('Special', 'YMSCreateClient'), '', '', 0);
   }
@@ -57,10 +91,20 @@ function page_Special_YMS()
     $enabled = $_POST['state'] == 'active';
     $any_client = isset($_POST['any_client']);
     $notes = $_POST['notes'];
+    
+    // Release key?
+    if ( $session->user_level >= USER_LEVEL_ADMIN && getConfig('yms_claim_enable', 0) == 1 && isset($_POST['allow_claim']) )
+    {
+      $client_id = 0;
+      // also allow anyone to validate OTPs from it and mark it as active
+      $any_client = true;
+      $enabled = true;
+    }
+    
     $result = yms_add_yubikey($_POST['add_aes'], $_POST['add_otp'], $client_id, $enabled, $any_client, $notes);
     yms_send_response('yms_msg_addkey_success', $result);
   }
-  else if ( isset($_POST['claim_otp']) )
+  else if ( isset($_POST['claim_otp']) && getConfig('yms_claim_enable', 0) == 1 )
   {
     // do we need to validate a custom field?
     if ( ($url = getConfig('yms_claim_auth_url')) && getConfig('yms_claim_auth_field') && getConfig('yms_claim_auth_enable', 0) == 1 )
@@ -89,6 +133,15 @@ function page_Special_YMS()
     $result = yms_delete_key($id);
     yms_send_response('yms_msg_delete_success', $result);
   }
+  else if ( isset($_POST['update_counters']) )
+  {
+    $yk_id  = $_POST['update_counters'];
+    $scount = $_POST['session_count'];
+    $tcount = $_POST['token_count'];
+    $any_client = isset($_POST['any_client']);
+    $result = yms_update_counters($yk_id, $scount, $tcount, false, $any_client);
+    yms_send_response('yms_msg_counter_update_success', $result);
+  }
   
   if ( isset($_GET['toggle']) && isset($_GET['state']) )
   {
@@ -98,7 +151,7 @@ function page_Special_YMS()
     else
       $expr = 'flags & ~' . YMS_ENABLED;
       
-    $q = $db->sql_query('UPDATE ' . table_prefix . "yms_yubikeys SET flags = $expr WHERE id = $id AND client_id = {$session->user_id};");
+    $q = $db->sql_query('UPDATE ' . table_prefix . "yms_yubikeys SET flags = $expr WHERE id = $id AND client_id = {$yms_client_id};");
     if ( !$q )
       $db->die_json();
   }
@@ -124,15 +177,17 @@ function page_Special_YMS()
        href="<?php echo makeUrlNS('Special', 'YMS/AddKey'); ?>" onclick="yms_showpage('AddKey'); return false;">
       <?php echo $lang->get('yms_btn_add_key'); ?>
     </a>
+    <?php if ( getConfig('yms_claim_enable', 0) == 1 && $yms_client_id > 0 ): ?>
     <a class="abutton abutton_blue icon" style="background-image: url(<?php echo scriptPath; ?>/plugins/yms/icons/key_add.png);"
        href="<?php echo makeUrlNS('Special', 'YMS/AddPreregisteredKey'); ?>" onclick="yms_showpage('AddPreregisteredKey'); return false;">
       <?php echo $lang->get('yms_btn_add_key_preregistered'); ?>
     </a>
+    <?php endif; ?>
   </div>
   <?php
   
   // Pull all Yubikeys
-  $q = $db->sql_query('SELECT id, public_id, session_count, create_time, access_time, flags, notes FROM ' . table_prefix . "yms_yubikeys WHERE client_id = {$session->user_id} ORDER BY id ASC;");
+  $q = $db->sql_query('SELECT id, public_id, session_count, create_time, access_time, flags, notes FROM ' . table_prefix . "yms_yubikeys WHERE client_id = {$yms_client_id} ORDER BY id ASC;");
   if ( !$q )
     $db->_die();
   
@@ -203,7 +258,11 @@ function page_Special_YMS()
       <?php echo $lang->get('yms_btn_show_client_info'); ?>
     </a>
     
-    <?php
+    <?php if ( getConfig('yms_claim_enable', 0) == 1 ): ?>
+    <a href="<?php echo makeUrlNS('Special', 'YMS', 'client_switch', true); ?>" class="abutton abutton_green">
+      <?php echo $yms_client_id == 0 ? $lang->get('yms_btn_switch_from_zero') : $lang->get('yms_btn_switch_to_zero'); ?>
+    </a>
+    <?php endif;
   }
   $db->free_result($q);
   
@@ -283,6 +342,22 @@ function page_Special_YMS_AddKey()
         </td>
       </tr>
       
+      <!-- Allow claim -->
+      <?php if ( getConfig('yms_claim_enable', 0) == 1 ): ?>
+      <tr>
+        <td class="row2">
+          <?php echo $lang->get('yms_lbl_addkey_field_allow_claim_name'); ?><br />
+          <small><?php echo $lang->get('yms_lbl_addkey_field_allow_claim_hint'); ?></small>
+        </td>
+        <td class="row1">
+          <label>
+            <input type="checkbox" name="allow_claim" />
+            <?php echo $lang->get('yms_lbl_addkey_field_allow_claim'); ?>
+          </label>
+        </td>
+      </tr>
+      <?php endif; ?>
+      
       <!-- Notes -->
       <tr>
         <td class="row2">
@@ -313,6 +388,9 @@ function page_Special_YMS_AddPreregisteredKey()
 {
   global $db, $session, $paths, $template, $plugins; // Common objects
   global $lang, $output;
+  
+  if ( getConfig('yms_claim_enable', 0) != 1 )
+    die();
   
   $output->add_after_header('<div class="breadcrumbs">
       <a href="' . makeUrlNS('Special', 'YMS') . '">' . $lang->get('yms_specialpage_yms') . '</a> &raquo;
@@ -406,7 +484,7 @@ function page_Special_YMS_AddPreregisteredKey()
 function page_Special_YMS_ShowAESKey()
 {
   global $db, $session, $paths, $template, $plugins; // Common objects
-  global $lang, $output;
+  global $lang, $output, $yms_client_id;
   
   $output->add_after_header('<div class="breadcrumbs">
       <a href="' . makeUrlNS('Special', 'YMS') . '">' . $lang->get('yms_specialpage_yms') . '</a> &raquo;
@@ -416,7 +494,7 @@ function page_Special_YMS_ShowAESKey()
   $id = intval($paths->getParam(1));
   
   // verify ownership, retrieve key
-  $q = $db->sql_query('SELECT client_id, public_id, aes_secret FROM ' . table_prefix . "yms_yubikeys WHERE id = $id;");
+  $q = $db->sql_query('SELECT client_id, public_id, aes_secret, session_count, token_count, flags FROM ' . table_prefix . "yms_yubikeys WHERE id = $id;");
   if ( !$q )
     $db->_die();
   
@@ -425,14 +503,20 @@ function page_Special_YMS_ShowAESKey()
     die_friendly('no rows', '<p>key not found</p>');
   }
   
-  list($client_id, $public_id, $secret) = $db->fetchrow_num();
+  list($client_id, $public_id, $secret, $scount, $tcount, $flags) = $db->fetchrow_num();
   $db->free_result();
   
-  if ( $client_id !== $session->user_id )
+  if ( $client_id !== $yms_client_id )
     die_friendly($lang->get('etc_access_denied_short'), '<p>' . $lang->get('etc_access_denied') . '</p>');
   
   $output->header();
   ?>
+  
+  <h3><?php echo $lang->get('yms_showaes_heading_main'); ?></h3>
+  
+  <form action="<?php echo makeUrlNS('Special', 'YMS'); ?>" method="post">
+  <input type="hidden" name="update_counters" value="<?php echo $id; ?>" />
+  
   <div class="tblholder">
   <table border="0" cellspacing="1" cellpadding="4">
     <tr>
@@ -471,8 +555,57 @@ function page_Special_YMS_ShowAESKey()
       </td>
     </tr>
     
+    <!-- COUNTERS -->
+    <tr>
+      <th colspan="2">
+      <?php echo $lang->get('yms_showaes_th_counter'); ?>
+      </th>
+    </tr>
+    
+    <tr>
+      <td class="row2">
+        <?php echo $lang->get('yms_showaes_field_session_count'); ?><br />
+        <small><?php echo $lang->get('yms_showaes_field_session_count_hint'); ?></small>
+      </td>
+      <td class="row1">
+        <input type="text" name="session_count" value="<?php echo $scount; ?>" size="5" />
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="row2">
+        <?php echo $lang->get('yms_showaes_field_otp_count'); ?><br />
+        <small><?php echo $lang->get('yms_showaes_field_otp_count_hint'); ?></small>
+      </td>
+      <td class="row1">
+        <input type="text" name="token_count" value="<?php echo $tcount; ?>" size="5" />
+      </td>
+    </tr>
+    
+    <!-- Any client -->
+    <tr>
+      <td class="row2">
+        <?php echo $lang->get('yms_lbl_addkey_field_any_client_name'); ?><br />
+        <small><?php echo $lang->get('yms_lbl_addkey_field_any_client_hint'); ?></small>
+      </td>
+      <td class="row1">
+        <label>
+          <input type="checkbox" name="any_client" <?php if ( $flags & YMS_ANY_CLIENT ) echo 'checked="checked" '; ?>/>
+          <?php echo $lang->get('yms_lbl_addkey_field_any_client'); ?>
+        </label>
+      </td>
+    </tr>
+    
+    <tr>
+      <th class="subhead" colspan="2">
+        <input type="submit" value="<?php echo $lang->get('etc_save_changes'); ?>" />
+      </td>
+    </tr>
+    
   </table>
   </div>
+  
+  </form>
   <?php
   $output->footer();
 }
@@ -481,14 +614,14 @@ function page_Special_YMS_ShowAESKey()
 function page_Special_YMS_ShowClientInfo()
 {
   global $db, $session, $paths, $template, $plugins; // Common objects
-  global $lang, $output;
+  global $lang, $output, $yms_client_id;
   
   $output->add_after_header('<div class="breadcrumbs">
       <a href="' . makeUrlNS('Special', 'YMS') . '">' . $lang->get('yms_specialpage_yms') . '</a> &raquo;
       ' . $lang->get('yms_btn_show_client_info') . '
     </div>');
   
-  $q = $db->sql_query('SELECT apikey FROM ' . table_prefix . "yms_clients WHERE id = {$session->user_id};");
+  $q = $db->sql_query('SELECT apikey FROM ' . table_prefix . "yms_clients WHERE id = {$yms_client_id};");
   if ( !$q )
     $db->_die();
   
@@ -508,7 +641,7 @@ function page_Special_YMS_ShowClientInfo()
     
     <tr>
       <td class="row2"><?php echo $lang->get('yms_lbl_client_id'); ?></td>
-      <td class="row1"><?php echo strval($session->user_id); ?></td>
+      <td class="row1"><?php echo strval($yms_client_id); ?></td>
     </tr>
     
     <tr>
@@ -696,6 +829,7 @@ function page_Special_YMS_DeleteKey()
 function page_Special_YMS_AjaxToggleState()
 {
   global $db, $session, $paths, $template, $plugins; // Common objects
+  global $yms_client_id;
   
   $id = intval($_POST['id']);
   if ( $_POST['state'] === 'active' )
@@ -703,7 +837,7 @@ function page_Special_YMS_AjaxToggleState()
   else
     $expr = 'flags & ~' . YMS_ENABLED;
     
-  $q = $db->sql_query('UPDATE ' . table_prefix . "yms_yubikeys SET flags = $expr WHERE id = $id AND client_id = {$session->user_id};");
+  $q = $db->sql_query('UPDATE ' . table_prefix . "yms_yubikeys SET flags = $expr WHERE id = $id AND client_id = {$yms_client_id};");
   if ( !$q )
     $db->die_json();
   
@@ -716,11 +850,12 @@ function page_Special_YMS_AjaxToggleState()
 function page_Special_YMS_AjaxNotes()
 {
   global $db, $session, $paths, $template, $plugins; // Common objects
+  global $yms_client_id;
   
   if ( isset($_POST['get']) )
   {
     $id = intval($_POST['get']);
-    $q = $db->sql_query('SELECT notes FROM ' . table_prefix . "yms_yubikeys WHERE id = $id AND client_id = {$session->user_id};");
+    $q = $db->sql_query('SELECT notes FROM ' . table_prefix . "yms_yubikeys WHERE id = $id AND client_id = {$yms_client_id};");
     if ( !$q )
       $db->_die();
     if ( $db->numrows() < 1 )
@@ -739,7 +874,7 @@ function page_Special_YMS_AjaxNotes()
     $id = intval($_POST['save']);
     $note = trim($_POST['note']);
     $note = $db->escape($note);
-    $q = $db->sql_query('UPDATE ' . table_prefix . "yms_yubikeys SET notes = '$note' WHERE id = $id AND client_id = {$session->user_id};");
+    $q = $db->sql_query('UPDATE ' . table_prefix . "yms_yubikeys SET notes = '$note' WHERE id = $id AND client_id = {$yms_client_id};");
     if ( !$q )
       $db->die_json();
     
@@ -756,6 +891,9 @@ function page_Special_YMSCreateClient()
   global $db, $session, $paths, $template, $plugins; // Common objects
   global $lang;
   global $output;
+  global $yms_client_id;
+  
+  $yms_client_id = $session->user_id;
   
   // Require re-auth?
   if ( $session->auth_level < USER_LEVEL_CHPREF && getConfig('yms_require_reauth', 1) == 1 )
@@ -770,7 +908,7 @@ function page_Special_YMSCreateClient()
   }
   
   // Does the client exist?
-  $q = $db->sql_query('SELECT 1 FROM ' . table_prefix . "yms_clients WHERE id = {$session->user_id};");
+  $q = $db->sql_query('SELECT 1 FROM ' . table_prefix . "yms_clients WHERE id = {$yms_client_id};");
   if ( !$q )
     $db->_die();
   
@@ -790,7 +928,7 @@ function page_Special_YMSCreateClient()
     // register the client
     // SHA1 key length: 160 bits
     $api_key = base64_encode(AESCrypt::randkey(160 / 8));
-    $client_id = $session->user_id;
+    $client_id = $yms_client_id;
     
     $q = $db->sql_query('INSERT INTO ' . table_prefix . "yms_clients(id, apikey) VALUES ($client_id, '$api_key');");
     if ( !$q )
