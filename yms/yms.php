@@ -248,22 +248,27 @@ function page_Special_YMS()
     </div>
     
     <br /><br />
-    <a href="<?php echo makeUrlNS('Special', 'YMS/Converter'); ?>" onclick="yms_showpage('Converter'); return false;" class="abutton abutton_red icon"
-       style="background-image: url(<?php echo scriptPath; ?>/plugins/yms/icons/application_view_icons.png);">
-      <?php echo $lang->get('yms_btn_show_converter'); ?>
-    </a>
-    
-    <a href="<?php echo makeUrlNS('Special', 'YMS/ShowClientInfo'); ?>" onclick="yms_showpage('ShowClientInfo'); return false;" class="abutton abutton_blue icon"
-       style="background-image: url(<?php echo scriptPath; ?>/plugins/yms/icons/show_client_info.png);">
-      <?php echo $lang->get('yms_btn_show_client_info'); ?>
-    </a>
-    
-    <?php if ( getConfig('yms_claim_enable', 0) == 1 ): ?>
-    <a href="<?php echo makeUrlNS('Special', 'YMS', 'client_switch', true); ?>" class="abutton abutton_green">
-      <?php echo $yms_client_id == 0 ? $lang->get('yms_btn_switch_from_zero') : $lang->get('yms_btn_switch_to_zero'); ?>
-    </a>
-    <?php endif;
+    <?php
   }
+  
+  ?>
+  <a href="<?php echo makeUrlNS('Special', 'YMS/Converter'); ?>" onclick="yms_showpage('Converter'); return false;" class="abutton abutton_red icon"
+     style="background-image: url(<?php echo scriptPath; ?>/plugins/yms/icons/application_view_icons.png);">
+    <?php echo $lang->get('yms_btn_show_converter'); ?>
+  </a>
+  
+  <a href="<?php echo makeUrlNS('Special', 'YMS/ShowClientInfo'); ?>" onclick="yms_showpage('ShowClientInfo'); return false;" class="abutton abutton_blue icon"
+     style="background-image: url(<?php echo scriptPath; ?>/plugins/yms/icons/show_client_info.png);">
+    <?php echo $lang->get('yms_btn_show_client_info'); ?>
+  </a>
+  
+  <?php if ( getConfig('yms_claim_enable', 0) == 1 ): ?>
+  <a href="<?php echo makeUrlNS('Special', 'YMS', 'client_switch', true); ?>" class="abutton abutton_green">
+    <?php echo $yms_client_id == 0 ? $lang->get('yms_btn_switch_from_zero') : $lang->get('yms_btn_switch_to_zero'); ?>
+  </a>
+  <?php endif; ?>
+  <?php
+  
   $db->free_result($q);
   
   // close off inner div (yms-keylist)
