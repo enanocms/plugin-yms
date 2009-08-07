@@ -388,7 +388,8 @@ function page_Special_YMS_AddKey()
   $output->footer();
 }
 
-// Add key that's already registered
+// Add key, using just an OTP
+// Requires the key to be in the database as client ID 0
 function page_Special_YMS_AddPreregisteredKey()
 {
   global $db, $session, $paths, $template, $plugins; // Common objects
@@ -635,6 +636,9 @@ function page_Special_YMS_ShowClientInfo()
   
   $api_key = yms_tobinary($api_key);
   
+  $validate_url = makeUrlComplete('Special', 'YubikeyValidate');
+  $validate_url = preg_replace('/[?&]auth=[0-9a-f]+/', '', $validate_url);
+  
   $output->header();
   ?>
   <div class="tblholder">
@@ -647,6 +651,11 @@ function page_Special_YMS_ShowClientInfo()
     <tr>
       <td class="row2"><?php echo $lang->get('yms_lbl_client_id'); ?></td>
       <td class="row1"><?php echo strval($yms_client_id); ?></td>
+    </tr>
+    
+    <tr>
+      <td class="row2"><?php echo $lang->get('yms_lbl_validate_url'); ?></td>
+      <td class="row1"><?php echo htmlspecialchars($validate_url); ?></td>
     </tr>
     
     <tr>
@@ -886,9 +895,6 @@ function page_Special_YMS_AjaxNotes()
     echo 'ok';
   }
 }
-
-// Add key, using just an OTP
-// Requires the key to be in the database as client ID 0
 
 // Client creation
 function page_Special_YMSCreateClient()

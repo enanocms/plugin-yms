@@ -154,6 +154,7 @@ necessary; it is only included as a tool for development.
         th_client_id: 'Client ID',
         lbl_client_id: 'Client ID:',
         th_api_key: 'API key',
+        lbl_validate_url: 'Validation API URL:',
         
         // Deletion interface
         msg_delete_confirm: 'Are you sure you want to delete this Yubikey?',
