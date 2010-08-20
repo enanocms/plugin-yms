@@ -82,8 +82,8 @@ function page_Admin_YMS()
     
     <tr>
       <td class="row2" style="width: 50%;">
-        <?php echo $lang->get('yms_acp_field_claimauth_enable_title'); ?><br />
-        <small><?php echo $lang->get('yms_acp_field_claimauth_enable_hint'); ?></small>
+        <?php echo $lang->get('yms_acp_field_claimauth_title'); ?><br />
+        <small><?php echo $lang->get('yms_acp_field_claimauth_title_hint'); ?></small>
       </td>
       <td class="row1" style="width: 50%;">
         <input type="text" name="claimauth_field" value="<?php echo htmlspecialchars(getConfig('yms_claim_auth_field', '')); ?>" size="40" />

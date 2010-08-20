@@ -196,6 +196,8 @@ necessary; it is only included as a tool for development.
         acp_field_claimauth_enable_title: 'Use external authentication when claiming Yubikeys:',
         acp_field_claimauth_enable_hint: 'This allows you to require an additional value - for example, the receipt number from the user\'s Yubikey order - when Yubikeys are claimed.',
         acp_field_claimauth_enable: 'Require additional field to claim a Yubikey',
+        acp_field_claimauth_title: 'Name of the field:',
+        acp_field_claimauth_title_hint: 'The label of the field the user sees when they are prompted. Example: "Receipt number"',
         acp_field_claimauth_url_title: 'URL to claim authentication server:',
         acp_field_claimauth_url_hint: 'The following variables will be applied:
                                        <ul>
