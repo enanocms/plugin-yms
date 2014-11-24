@@ -192,6 +192,8 @@ necessary; it is only included as a tool for development.
         acp_field_claim_enable_hint: 'If you plan to program your own Yubikeys and give them to others, enable this to allow them to create YMS accounts and "claim" the keys so they can see AES secrets and control settings on their keys.<br />
                                       If you enable this, all Administrators will see an option when adding a new key to put it into the pool of unclaimed keys.<br />
                                       To claim a Yubikey, YMS requires users to enter a valid OTP, and optionally, an additional field you may configure below.',
+		acp_field_force_client_id_title: 'Shared client ID:',
+		acp_field_force_client_id_hint: 'If set, all Yubikeys will be registered to the same underlying client account. This allows everyone on the site to manage a single pool of Yubikeys using different accounts.',
         acp_field_claim_enable: 'Enable the claim system',
         acp_field_claimauth_enable_title: 'Use external authentication when claiming Yubikeys:',
         acp_field_claimauth_enable_hint: 'This allows you to require an additional value - for example, the receipt number from the user\'s Yubikey order - when Yubikeys are claimed.',

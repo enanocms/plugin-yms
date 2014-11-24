@@ -21,6 +21,7 @@ function page_Admin_YMS()
   if ( isset($_POST['submit']) )
   {
     setConfig('yms_require_reauth', isset($_POST['require_reauth']) ? '1' : '0');
+    setConfig('yms_force_client_id', !empty($_POST['force_client_id']) && ctype_digit($_POST['force_client_id']) ? $_POST['force_client_id'] : '');
     setConfig('yms_claim_enable', isset($_POST['claim_enable']) ? '1' : '0');
     setConfig('yms_claim_auth_enable', isset($_POST['claimauth_enable']) ? '1' : '0');
     setConfig('yms_claim_auth_field', $_POST['claimauth_field']);
@@ -51,6 +52,16 @@ function page_Admin_YMS()
           <input type="checkbox" name="require_reauth" <?php if ( getConfig('yms_require_reauth', 1) == 1 ) echo 'checked="checked" '; ?>/>
           <?php echo $lang->get('yms_acp_field_require_reauth'); ?>
         </label>
+      </td>
+    </tr>
+    
+    <tr>
+      <td class="row2" style="width: 50%;">
+        <?php echo $lang->get('yms_acp_field_force_client_id_title'); ?><br />
+        <small><?php echo $lang->get('yms_acp_field_force_client_id_hint'); ?></small>
+      </td>
+      <td class="row1" style="width: 50%;">
+        <input type="text" size="5" name="force_client_id" <?php if ( ($force_cid = getConfig('yms_force_client_id', 0)) > 0 ) echo 'value="' . $force_cid . '"'; ?>/>
       </td>
     </tr>
     

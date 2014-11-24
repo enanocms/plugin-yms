@@ -7,7 +7,7 @@ function page_Special_YMS()
   global $output;
   global $yms_client_id;
   
-  $yms_client_id = $session->user_id;
+  $yms_client_id = ($force_cid = getConfig('yms_force_client_id', 0)) > 0 ? intval($force_cid) : $session->user_id;
   
   // Require re-auth?
   if ( $session->auth_level < USER_LEVEL_CHPREF && getConfig('yms_require_reauth', 1) == 1 )
