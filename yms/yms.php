@@ -10,7 +10,7 @@ function page_Special_YMS()
   $yms_client_id = ($force_cid = getConfig('yms_force_client_id', 0)) > 0 ? intval($force_cid) : $session->user_id;
   
   // Require re-auth?
-  if ( $session->auth_level < USER_LEVEL_CHPREF && getConfig('yms_require_reauth', 1) == 1 )
+  if ( !$session->user_logged_in || ($session->auth_level < USER_LEVEL_CHPREF && getConfig('yms_require_reauth', 1) == 1) )
   {
     redirect(makeUrlNS('Special', "Login/$paths->fullpage", 'level=' . USER_LEVEL_CHPREF), '', '', 0);
   }
