@@ -27,6 +27,10 @@ function yms_generate_signed_response($response, $api_key)
   $result = "h={$hash}\n";
   foreach ( $response as $key => $value )
   {
+    if ( $value === null )
+    {
+      continue;
+    }
     $result .= "{$key}={$value}\n";
   }
   return trim($result);

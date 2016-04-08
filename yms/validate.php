@@ -16,6 +16,12 @@ function page_Special_YubikeyValidate()
   {
     yms_send_reply('MISSING_PARAMETER', '', array('info' => 'otp'));
   }
+
+  $nonce = null;
+  if ( isset($_GET['nonce']) )
+  {
+    $nonce = $_GET['nonce'];
+  }
   
   // first, get API key so we can properly sign responses
   $id = intval($_GET['id']);
@@ -42,6 +48,6 @@ function page_Special_YubikeyValidate()
   
   $GLOBALS['g_api_key'] =& $g_api_key;
   
-  yms_send_reply(yms_validate_otp($_GET['otp'], $id));
+  yms_send_reply(yms_validate_otp($_GET['otp'], $id), '', array('nonce' => $nonce, 'otp' => $_GET['otp']));
 }
 
