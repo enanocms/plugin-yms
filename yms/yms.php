@@ -104,6 +104,201 @@ function page_Special_YMS()
     $result = yms_add_yubikey($_POST['add_aes'], $_POST['add_otp'], $client_id, $enabled, $any_client, $notes);
     yms_send_response('yms_msg_addkey_success', $result);
   }
+  else if ( isset($_POST['csv']) )
+  {
+    $csv = explode("\n", trim($_POST['csv']));
+    
+    $errors = array();
+    
+    // first line: header
+    $head = str_getcsv($csv[0]);
+    
+    // column check: aes_secret
+    if ( !in_array('aes_secret', $head) )
+    {
+      $errors[] = $lang->get('yms_err_add_batch_missing_aes_key');
+    }
+    
+    // column check: otp, public_id and private_id
+    if ( !in_array('otp', $head) )
+    {
+      if ( !in_array('public_id', $head) || !in_array('private_id', $head) )
+      {
+        $errors[] = $lang->get('yms_err_add_batch_missing_id');
+      }
+    }
+    
+    if ( !empty($errors) )
+    {
+      yms_send_response(false, '<ul><li>' . implode('</li><li>', $errors) . '</li></ul>');
+    }
+    
+    // we are good to start processing
+    $db->transaction_begin();
+    for ( $i = 1; $i < count($csv); $i++ )
+    {
+      $line = str_getcsv($csv[$i]);
+      
+      // ensure column count == row count
+      if ( count($line) !== count($head) )
+      {
+        $errors[] = $lang->get('yms_err_add_batch_bad_row_count', array('line' => $i));
+        continue;
+      }
+      
+      // remap line
+      foreach ( $head as $j => $col )
+      {
+        $line[$col] =& $line[$j];
+      }
+      
+      // initialize row
+      $row = array(
+        'client_id' => $yms_client_id,
+        'aes_secret' => yms_hex_encode(yms_tobinary($line['aes_secret'])),
+        'session_count' => 0,
+        'token_count' => 0,
+        'create_time' => time(),
+        'token_time' => 0,
+        'flags' => 0,
+        'notes' => ''
+      );
+      
+      if ( !preg_match('/^[0-9a-f]{32}$/', $row['aes_secret']) )
+      {
+        $errors[] = $lang->get('yms_err_add_batch_aes_secret', array('line' => $i));
+        continue;
+      }
+      
+      // do we have an OTP?
+      if ( isset($line['otp']) )
+      {
+        // yes, decode it
+        $otp = yms_decode_otp($line['otp'], $line['aes_secret']);
+        if ( $otp === false )
+        {
+          $errors[] = $lang->get('yms_err_add_batch_bad_otp', array('line' => $i));
+          continue;
+        }
+        
+        if ( !$otp['crc_good'] )
+        {
+          $errors[] = $lang->get('yms_err_add_batch_bad_otp', array('line' => $i));
+          continue;
+        }
+       
+        $row['public_id'] = $otp['publicid'];
+        $row['private_id'] = $otp['privateid'];
+        $row['session_count'] = $otp['session'];
+        $row['token_count'] = $otp['count'];
+        $row['token_time'] = $otp['timestamp'];
+      }
+      
+      // public and private ID
+      foreach ( array('public_id', 'private_id') as $col )
+      {
+        if ( !empty($line[$col]) )
+        {
+          $row[$col] = yms_hex_encode(yms_tobinary($line[$col]));
+        }
+        if ( !isset($row[$col]) || !preg_match('/^[0-9a-f]{12}$/', $row[$col]) )
+        {
+          $errors[] = $lang->get("yms_err_add_batch_bad_$col", array('line' => $i));
+          continue 2;
+        }
+      }
+      
+      // session count, token count and timestamp
+      foreach ( array('session_count', 'token_count', 'token_time') as $col )
+      {
+        if ( !empty($line[$col]) )
+        {
+          $row[$col] = intval($line[$col]);
+        }
+      }
+      
+      // notes
+      if ( isset($line['notes']) )
+      {
+        $row['notes'] = trim($line['notes']);
+      }
+      
+      // lifecycle state
+      if ( isset($line['lifecycle_state']) )
+      {
+        if ( !in_array($line['lifecycle_state'], array('active', 'inactive')) )
+        {
+          $errors[] = $lang->get('yms_err_add_batch_bad_lifecycle_state', array('line' => $i));
+          continue;
+        }
+        
+        if ( $line['lifecycle_state'] === 'active' )
+        {
+          $row['flags'] |= YMS_ENABLED;
+        }
+      }
+      else
+      {
+        // default to active
+        $row['flags'] |= YMS_ENABLED;
+      }
+      
+      // global access
+      if ( isset($line['access']) )
+      {
+        if ( !in_array($line['access'], array('global', 'restricted')) )
+        {
+          $errors[] = $lang->get('yms_err_add_batch_bad_access', array('line' => $i));
+          continue;
+        }
+        
+        if ( $line['access'] === 'global' )
+        {
+          $row['flags'] |= YMS_ANY_CLIENT;
+        }
+      }
+      
+      // duplicate key check
+      $q = $db->sql_query('SELECT 1 FROM ' . table_prefix . "yms_yubikeys WHERE public_id = '{$row['public_id']}';");
+      if ( $db->numrows() > 0 )
+      {
+        $errors[] = $lang->get('yms_err_add_batch_duplicate', array('line' => $i, 'public_id' => $row['public_id']));
+        continue;
+      }
+      
+      // build query
+      $cols = implode(', ', array_keys($row));
+      
+      foreach ( $row as &$cell )
+      {
+        if ( is_string($cell) )
+        {
+          $cell = "'" . $db->escape($cell) . "'";
+        }
+      }
+      unset($cell);
+      
+      $query = sprintf("INSERT INTO %syms_yubikeys ( %s ) VALUES ( %s );",
+                       table_prefix,
+                       $cols,
+                       implode(', ', $row)
+                       );
+      
+      // insert it!
+      $q = $db->sql_query($query);
+      if ( $q )
+      {
+        $errors[] = $lang->get('yms_err_add_batch_success', array('line' => $i, 'public_id' => $row['public_id']));
+      }
+      else
+      {
+        $errors[] = $lang->get('yms_err_add_batch_query', array('line' => $i, 'public_id' => $row['public_id'], 'error' => $db->sql_error()));
+      }
+    }
+    $db->transaction_commit();
+    
+    yms_send_response('<p><strong>' . $lang->get('yms_lbl_add_batch_success_head') . '</strong></p><ul><li>' . implode('</li><li>', $errors) . '</li></ul>', true);
+  }
   else if ( isset($_POST['claim_otp']) && getConfig('yms_claim_enable', 0) == 1 )
   {
     // do we need to validate a custom field?
@@ -176,6 +371,10 @@ function page_Special_YMS()
     <a class="abutton abutton_green icon" style="background-image: url(<?php echo scriptPath; ?>/plugins/yms/icons/key_add.png);"
        href="<?php echo makeUrlNS('Special', 'YMS/AddKey'); ?>" onclick="yms_showpage('AddKey'); return false;">
       <?php echo $lang->get('yms_btn_add_key'); ?>
+    </a>
+    <a class="abutton icon" style="background-image: url(<?php echo scriptPath; ?>/plugins/yms/icons/key_add.png);"
+       href="<?php echo makeUrlNS('Special', 'YMS/AddKeyBatch'); ?>" onclick="yms_showpage('AddKeyBatch'); return false;">
+      <?php echo $lang->get('yms_btn_add_batch'); ?>
     </a>
     <?php if ( getConfig('yms_claim_enable', 0) == 1 && $yms_client_id > 0 ): ?>
     <a class="abutton abutton_blue icon" style="background-image: url(<?php echo scriptPath; ?>/plugins/yms/icons/key_add.png);"
@@ -384,6 +583,53 @@ function page_Special_YMS_AddKey()
     </div>
   
   </form>
+  <?php
+  $output->footer();
+}
+
+// Add multiple Yubikeys by uploading a CSV
+function page_Special_YMS_AddKeyBatch()
+{
+  global $db, $session, $paths, $template, $plugins; // Common objects
+  global $lang, $output;
+  
+  $output->add_after_header('<div class="breadcrumbs">
+      <a href="' . makeUrlNS('Special', 'YMS') . '">' . $lang->get('yms_specialpage_yms') . '</a> &raquo;
+      ' . $lang->get('yms_btn_add_batch') . '
+    </div>');
+  
+  $output->header();
+  ?>
+  
+  <h3><?php echo $lang->get('yms_lbl_add_batch_heading'); ?></h3>
+  <?php echo $lang->get('yms_lbl_add_batch_desc'); ?>
+  
+  <form action="<?php echo makeUrlNS('Special', 'YMS'); ?>" method="post">
+  
+  <div class="tblholder">
+    <table border="0" cellspacing="1" cellspacing="4">
+      <!-- CSV paste -->
+      <tr>
+        <td class="row2">
+          <?php echo $lang->get('yms_lbl_add_batch_field_csv'); ?><br />
+          <small><?php echo $lang->get('yms_lbl_add_batch_field_csv_hint'); ?></small>
+        </td>
+        <td class="row1">
+          <textarea name="csv" rows="8" cols="60"></textarea>
+        </td>
+      </tr>
+      
+      <!-- Submit -->
+      <tr>
+        <th class="subhead" colspan="2">
+          <input type="submit" value="<?php echo $lang->get('yms_btn_add_batch_submit'); ?>" />
+        </th>
+      </tr>
+    </table>
+  </div>
+  
+  </form>
+  
   <?php
   $output->footer();
 }
@@ -854,9 +1100,6 @@ function page_Special_YMS_AjaxToggleState()
   $q = $db->sql_query('UPDATE ' . table_prefix . "yms_yubikeys SET flags = $expr WHERE id = $id AND client_id = {$yms_client_id};");
   if ( !$q )
     $db->die_json();
-  
-  if ( $db->sql_affectedrows() < 1 )
-    echo 'no affected rows; not ';
   
   echo 'ok';
 }
