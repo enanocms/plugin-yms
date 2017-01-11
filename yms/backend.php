@@ -354,7 +354,7 @@ function yms_validate_otp($otp, $id)
     // Tolerate up to a 0.5Hz deviance from 8Hz. I've observed Yubikey
     // clocks running at 8.32Hz
     $actual_delta = $otp['timestamp'] - $token_time;
-    $fuzz = 150 + round(($actual_delta / 7.5) - ($actual_delta / 8.5));
+    $fuzz = 150 + round(($actual_delta / 7.75) - ($actual_delta / 8.25));
     // Now that we've calculated fuzz, convert the actual delta to quasi-seconds
     $actual_delta /= 8;
     if ( !yms_within($expect_delta, $actual_delta, $fuzz) )
