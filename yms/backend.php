@@ -347,28 +347,31 @@ function yms_validate_otp($otp, $id)
     return 'REPLAYED_OTP';
   }
   
-  // update DB
-  $q = $db->sql_query("UPDATE " . table_prefix . "yms_yubikeys SET session_count = {$otp['session']}, token_count = {$otp['count']}, access_time = " . time() . ", token_time = {$otp['timestamp']} WHERE id = $yubikey_id;");
-  if ( !$q )
-    $db->_die();
-  
   // check timestamp
   if ( $otp['session'] == $session_count )
   {
     $expect_delta = time() - $access_time;
-    // 8Hz Yubikey internal clock
-    $actual_delta = intval(( $otp['timestamp'] - $token_time ) / 8);
-    $fuzz = 150;
+    // Tolerate up to a 0.5Hz deviance from 8Hz. I've observed Yubikey
+    // clocks running at 8.32Hz
+    $actual_delta = $otp['timestamp'] - $token_time;
+    $fuzz = 150 + round(($actual_delta / 7.5) - ($actual_delta / 8.5));
+    // Now that we've calculated fuzz, convert the actual delta to quasi-seconds
+    $actual_delta /= 8;
     if ( !yms_within($expect_delta, $actual_delta, $fuzz) )
     {
       // if we have a likely wraparound, just pass it
-      if ( !($token_time > 0xe80000 && $otp['timestamp'] < 0x800000) )
+      if ( !($token_time > 0xe80000 && $otp['timestamp'] < 0x080000) )
       {
         return 'BAD_OTP';
       }
     }
     // $debug_array = array('ts_debug_delta_expected' => $expect_delta, 'ts_debug_delta_received' => $actual_delta);
   }
+  
+  // update DB
+  $q = $db->sql_query("UPDATE " . table_prefix . "yms_yubikeys SET session_count = {$otp['session']}, token_count = {$otp['count']}, access_time = " . time() . ", token_time = {$otp['timestamp']} WHERE id = $yubikey_id;");
+  if ( !$q )
+    $db->_die();
   
   // looks like we're good
   return 'OK';

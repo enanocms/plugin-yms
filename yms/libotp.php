@@ -78,7 +78,5 @@ function yms_validate_crc($token)
 
 function yms_within($test, $control, $fuzz)
 {
-  $min = $control - $fuzz;
-  $max = $control + $fuzz;
-  return $test > $min && $test < $max;
+  return abs($control - $test) <= $fuzz;
 }
